@@ -3,8 +3,11 @@
 
 N <- 1000
 x <- runif(N, 0, 1)
-y0 <- x + .25*rnorm(N)
-y1 <- x*2 + .25*rnorm(N)
+y0 <- x + .25*rnorm(N) #potential outcome, control
+y1 <- x*2 + .25*rnorm(N) #potential outcome treated
+#units have correlated potential outcomes, b/c outcomes related to covars
+## almost always the case, treatment vs. control doesn't entirely determine outcome
+# but errors are uncorrelated
 index <- 1:N
 potcov <- data.frame(index, y1,y0,x)
 
@@ -24,6 +27,8 @@ N <- 1000
 x <- runif(N, 0, 1)
 y0 <- x + .25*rnorm(N)
 y1 <- x*2 + y0+ .25*rnorm(N)
+# y1 is function of y0, so error term from y0 is going into y1
+## errors correlated
 index <- 1:N
 potcov <- data.frame(index, y1,y0,x)
 
@@ -40,6 +45,7 @@ N <- 1000
 x <- runif(N, 0, 2)
 y0 <- .5*x - .25*(x-mean(x))^2 +.25*rnorm(N)
 y1 <- 2*y0 + .25 + (x-mean(x))^2 + .25*rnorm(N)
+#non-linearity in contribution of x to y's
 index <- 1:N
 potcov <- data.frame(index, y1,y0,x)
 
@@ -74,38 +80,39 @@ nsim <- 2000
 sate.hat.noadj <- sate.hat.simpadj <- sate.hat.intadj <- sate <- matrix(NA, ncol=length(n.vec), nrow=nsim)
 
 for(j in 1:length(n.vec)){
-  n <- n.vec[j]
+  n <- n.vec[j] #iterate through sample sizes
   
   for(i in 1:nsim){
     
     # Simple random sample without replacement
-    potcov.s <- potcov[potcov$index %in% sample(potcov$index, n),]
+    potcov.s <- potcov[potcov$index %in% sample(potcov$index, n),] #potential outcomes
     
-    sate[i,j] <- mean(potcov.s$y1 - potcov.s$y0)
+    sate[i,j] <- mean(potcov.s$y1 - potcov.s$y0) #sample avg treatment effect = mean of diff in potential outcomes
     
     # Complete random assignment of treatment
     n1 <- floor(.33*n)  # you can play around with treatment allocation.
     # this is set to an imbalanced design.
     potcov.s$D <- 0
-    potcov.s$D[potcov.s$index %in% sample(potcov.s$index, n1)] <- 1
+    potcov.s$D[potcov.s$index %in% sample(potcov.s$index, n1)] <- 1 #assign treatment
     
-    potcov.s$Y <- with(potcov.s, D*y1 + (1-D)*y0)
+    potcov.s$Y <- with(potcov.s, D*y1 + (1-D)*y0) #calculate outcome based on assignment
     
     # No adjustment (difference in means)
     ols.1 <- lm(Y~D, data=potcov.s)
     
-    # Simple covariate adjustment
+    # Simple covariate adjustment, 
     ols.2 <- lm(Y~D+x, data=potcov.s)
-
+    
+#adding coefficients increases efficiency
     sate.hat.noadj[i,j] <- coef(ols.1)["D"]
     sate.hat.simpadj[i,j] <- coef(ols.2)["D"]
   }
 }
 
-se.sate.hat.noadj <- apply(sate.hat.noadj, 2, sd)
-bias.sate.hat.noadj <- apply(sate.hat.noadj-sate, 2, mean)
-std.bias.sate.hat.noadj <- bias.sate.hat.noadj/se.sate.hat.noadj
-
+se.sate.hat.noadj <- apply(sate.hat.noadj, 2, sd) 
+bias.sate.hat.noadj <- apply(sate.hat.noadj-sate, 2, mean) #calc bias by subtract true value of SATE
+std.bias.sate.hat.noadj <- bias.sate.hat.noadj/se.sate.hat.noadj #divide bias by std error
+  #lowered std error by adding covars
 se.sate.hat.simpadj <- apply(sate.hat.simpadj, 2, sd)
 bias.sate.hat.simpadj <- apply(sate.hat.simpadj-sate, 2, mean)
 std.bias.sate.hat.simpadj <- bias.sate.hat.simpadj/se.sate.hat.simpadj
@@ -124,6 +131,11 @@ colnames(res.tab.out) <- c("Estimator","Statistic",paste("N=",n.vec,sep=""))
 
 res.tab.out
 
+#bias starts small, but declines a bit as sample size increases
+#standard error goes down fast as sample size increases
+#simple adjustment: std errors always smaller than no adjustement; add covars = smaller std errors
+## adding adjustment should increase bias, but bias/se still better, cause SE reduction much bigger than bias increase
+  ### that last bit didn't work for some reason
 ######
 
 
@@ -133,19 +145,27 @@ res.tab.out
 
 
 ##########################################Replication of Munger (2017)
+#tweetment effects paper
 
 ####conceptually, what is the motivation for controlling for log.followers? 
 #### is there some risk of this being a ``bad control" ? 
+
+# num of followers each subj has. introducing bias?
+  # controlling increases efficiency
+  ## more popular accounts might be less likely to be visibly racist? So less likely to be treated?
+#not a collider? Affects racism, and assignment through that, but nothing else?
 
 
 #### The two datasets are based on different assumptions about how to treat 
 ### study attrition --- subjects whose accounts were deleted/suspended/unmeasured
 
 ### "standard" drops those subjects and proceeds as normal
-### "conservative" 
+### "conservative" says assign each of those subjects a treatment effect of 0
+  ### assume the treatment effect was 0, racism score constant pre to post
 
 ### Explain the potential bias from using the standard assumption
 
+###### The treatment may have caused the attrition. So dropping them 
 
 
 ###using the code from inclass_215.R, perform CEM on this data, matching
