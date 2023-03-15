@@ -152,8 +152,12 @@ res.tab.out
 
 # num of followers each subj has. introducing bias?
   # controlling increases efficiency
-  ## more popular accounts might be less likely to be visibly racist? So less likely to be treated?
-#not a collider? Affects racism, and assignment through that, but nothing else?
+#affects reaction to treatment. popular user less likely to be dissuaded?
+
+#Is there a relationship between the treatment and this covar? Is there relationship b/t this covar & outcome
+## if treatment causes covar then it might be post-treatment var, so controlling bad
+## if a collider then controlling will increase bias
+## neither is the case here
 
 
 #### The two datasets are based on different assumptions about how to treat 
@@ -165,7 +169,11 @@ res.tab.out
 
 ### Explain the potential bias from using the standard assumption
 
-###### The treatment may have caused the attrition. So dropping them 
+###### The treatment may have caused the attrition. 
+##     So dropping them is conditioning on a post treatment variable (whether they stick around)?
+## conservative says attrition (sample selection bias) is related to treatment
+  ## say sample selection is correlated w/ potential outcomes
+## standard: may be collider (being in sample is collider)
 
 
 ###using the code from inclass_215.R, perform CEM on this data, matching
@@ -174,4 +182,28 @@ res.tab.out
 ### You'll have to restrict the data to just treatment 3 and the control (0)
 
 ## estimate a standard ols model with these cem weights. 
+
+library(tidyverse)
+library(fixest)
+library(haven)
+library(MatchIt)
+
+
+
+# Coarsened-Exact Matching
+
+data_t3<-data[data$treat.f==3|data$treat.f==0,]
+
+cem_out <- matchit(
+  treat.f ~ anonymity + racism.scores.pre.2mon + log.followers,
+  data = data_t3,
+  method = "cem", estimand = "ATT"
+)
+
+data_t3$cem_weights = cem_out$weights
+
+feols(
+  racism.scores.post.1wk ~ i(treat.f), weights = ~cem_weights,
+  data = data_t3,  vcov = "hc1"
+)
 
