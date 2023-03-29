@@ -183,15 +183,19 @@ res.tab.out
 
 ## estimate a standard ols model with these cem weights. 
 
+<<<<<<< HEAD
 library(tidyverse)
 library(fixest)
 library(haven)
 library(MatchIt)
 
+=======
+>>>>>>> 9ce91ef1d1ed90daaa209797310652e296d3d1b0
 
 
 # Coarsened-Exact Matching
 
+<<<<<<< HEAD
 data_t3<-data[data$treat.f==3|data$treat.f==0,]
 
 cem_out <- matchit(
@@ -206,4 +210,28 @@ feols(
   racism.scores.post.1wk ~ i(treat.f), weights = ~cem_weights,
   data = data_t3,  vcov = "hc1"
 )
+=======
+data$treat<-ifelse(data$treat.f == 3, 1, 0)
+data_binary<-filter(data, treat == 1 | treat.f == 0)
+
+cem_out <- matchit(
+  treat ~  racism.scores.pre.2mon + log.followers + anonymity,
+  data = data_binary,
+  method = "cem", estimand = "ATE"
+)
+
+data_binary$cem_weights = cem_out$weights
+
+feols(
+  racism.scores.post.1wk ~ treat, weights = ~cem_weights,
+  data = data_binary,  vcov = "hc1")
+
+
+
+summary(lm(
+  racism.scores.post.2wk ~ treat, weights = cem_weights,
+  data = data_binary
+  
+))
+>>>>>>> 9ce91ef1d1ed90daaa209797310652e296d3d1b0
 
